@@ -1,0 +1,118 @@
+import tkinter as tk
+from tkinter import Toplevel, Label, Button, Entry, messagebox
+from db import conectar_db
+ 
+
+def abrir_doctor():
+    ventana = tk.Tk()
+    ventana.title("Panel del Médico")
+    ventana.geometry("400x500")
+
+    Label(ventana, text="", font=("Helvetica", 14, "bold")).pack(pady=10)
+
+    # Funciones de cada botón
+    def ver_agenda():
+        ventana = Toplevel()
+        ventana.title("Agenda de Citas")
+        db = conectar_db()
+        cursor = db.cursor()
+        cursor.execute("""
+            SELECT c.idCita, p.Nombre, h.Fecha_cita, h.Hora_cita
+            FROM Citas c
+            JOIN Pacientes p ON c.idPaciente = p.idPaciente
+            JOIN Horario h ON c.idHorario = h.idHorario
+            WHERE h.idMedico = %s
+        """, (id_Medico,))
+        citas = cursor.fetchall()
+        db.close()
+
+        for cita in citas:
+            Label(ventana, text=f"Cita ID: {cita[0]}, Paciente: {cita[1]}, Fecha: {cita[2]}, Hora: {cita[3]}").pack()
+
+    def registrar_tratamiento():
+        ventana = Toplevel()
+        ventana.title("Registrar Tratamiento")
+
+        Label(ventana, text="ID de la Cita:").pack()
+        entrada_cita = Entry(ventana)
+        entrada_cita.pack()
+
+        Label(ventana, text="Descripción del Tratamiento:").pack()
+        entrada_tratamiento = Entry(ventana)
+        entrada_tratamiento.pack()
+
+        def guardar_tratamiento():
+            id_cita = entrada_cita.get()
+            descripcion = entrada_tratamiento.get()
+            db = conectar_db()
+            cursor = db.cursor()
+            cursor.execute("""
+                INSERT INTO Tratamientos (idCita, Descripcion)
+                VALUES (%s, %s)
+            """, (id_cita, descripcion))
+            db.commit()
+            db.close()
+            messagebox.showinfo("Éxito", "Tratamiento registrado correctamente.")
+            ventana.destroy()
+
+        Button(ventana, text="Guardar", command=guardar_tratamiento).pack(pady=10)
+
+
+    def actualizar_estado():
+        v = crear_ventana_titulo("Actualizar estado de cita", "Estado de Cita")
+        Entry(v).pack(pady=5)
+        Button(v, text="Actualizar").pack()
+
+    def ver_historial_paciente():
+        crear_ventana_titulo("Historial médico del paciente", "Historial Médico")
+
+    def modificar_horario():
+        crear_ventana_titulo("Modificar horario de citas", "Modificar Horario")
+
+    def ver_perfil_paciente():
+        v = crear_ventana_titulo("Perfil del paciente", "Perfil Paciente")
+        Label(v, text="Nombre: Ana Gómez").pack()
+        Label(v, text="Edad: 29").pack()
+        Label(v, text="Género: Femenino").pack()
+        Label(v, text="Antecedentes: Asma").pack()
+        Label(v, text="Teléfono: 555-123456").pack()
+
+    def calificar_paciente():
+        v = crear_ventana_titulo("Califica al paciente (1-5)", "Calificar Paciente")
+        entrada = Entry(v)
+        entrada.pack()
+        Button(v, text="Enviar", command=lambda: messagebox.showinfo("Gracias", f"Calificación: {entrada.get()}")).pack()
+
+    def ver_perfil_medico():
+        v = crear_ventana_titulo("Perfil del Médico", "Mi Perfil")
+        Label(v, text="Nombre: Dr. Carlos Pérez").pack()
+        Label(v, text="Género: Masculino").pack()
+        Label(v, text="Horarios: Lunes a Viernes 9am - 5pm").pack()
+        Label(v, text="Calificación: 4.8").pack()
+        Label(v, text="Correo: dr.carlos@example.com").pack()
+
+    # Botones principales
+    acciones = [
+        ("Ver Agenda de Citas", ver_agenda),
+        ("Registrar Tratamiento", registrar_tratamiento),
+        ("Actualizar Estado de Citas", actualizar_estado),
+        ("Ver Historial del Paciente", ver_historial_paciente),
+        ("Modificar Horario de Citas", modificar_horario),
+        ("Ver Perfil del Paciente", ver_perfil_paciente),
+        ("Calificar Paciente", calificar_paciente),
+        ("Ver Mi Perfil", ver_perfil_medico),
+    ]
+
+    for texto, accion in acciones:
+        Button(ventana, text=texto, width=35, command=accion).pack(pady=5)
+
+    ventana.mainloop()
+
+# Ventana genérica para acciones simples
+    def crear_ventana_titulo(texto, titulo="Ventana"):
+        v = Toplevel()
+        v.title(titulo)
+        Label(v, text=texto, padx=20, pady=10).pack()
+        return v
+
+    ventana.mainloop()
