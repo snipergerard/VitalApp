@@ -1,7 +1,8 @@
-from tkinter import *
+import customtkinter as ctk
 from tkinter import messagebox
 from db import conectar_db
 
+# Función para verificar login
 def verificar_login(usuario, contrasena):
     db = conectar_db()
     if db is None:
@@ -10,41 +11,60 @@ def verificar_login(usuario, contrasena):
     try:
         cursor = db.cursor()
         cursor.execute("""
-            SELECT idRol FROM Usuarios 
-            WHERE (Correo=%s OR Nombre=%s) AND Contraseña=%s
+            SELECT u.idUsuario, u.idRol FROM Usuarios u
+            WHERE (u.Correo=%s OR u.Nombre=%s) AND u.Contraseña=%s
         """, (usuario, usuario, contrasena))
         resultado = cursor.fetchone()
-        return resultado[0] if resultado else None
+        if resultado:
+            id_usuario, id_rol = resultado
+            return {'rol': id_rol, 'id_usuario': id_usuario}
+        else:
+            return None
     except Exception as e:
         messagebox.showerror("Error", f"Error al verificar el login:\n{e}")
         return None
     finally:
         db.close()
 
-
+# Función para abrir la ventana de login
 def abrir_login(callback_por_rol):
-    ventana = Tk()
+    ctk.set_appearance_mode("Light")  # Opciones: "System", "Light", "Dark"
+    ctk.set_default_color_theme("blue")  # También "dark-blue", "green", etc.
+
+    ventana = ctk.CTk()
     ventana.title("Login - VitalApp")
-    ventana.geometry("300x220")
+    ventana.geometry("400x350")
     ventana.resizable(False, False)
 
-    Label(ventana, text="Correo o Nombre de Usuario:").pack(pady=5)
-    entrada_usuario = Entry(ventana)
-    entrada_usuario.pack()
+    # Frame principal
+    frame = ctk.CTkFrame(master=ventana)
+    frame.pack(pady=30, padx=30, fill="both", expand=True)
 
-    Label(ventana, text="Contraseña:").pack(pady=5)
-    entrada_contra = Entry(ventana, show="*")
-    entrada_contra.pack()
+    # Título
+    label_titulo = ctk.CTkLabel(frame, text="Iniciar Sesión", font=("Helvetica", 24, "bold"))
+    label_titulo.pack(pady=20)
 
+    # Entrada de usuario
+    entrada_usuario = ctk.CTkEntry(frame, placeholder_text="Correo o Nombre de Usuario")
+    entrada_usuario.pack(pady=10, fill="x")
+
+    # Entrada de contraseña
+    entrada_contra = ctk.CTkEntry(frame, placeholder_text="Contraseña", show="*")
+    entrada_contra.pack(pady=10, fill="x")
+
+    # Función de login
     def login():
         usuario = entrada_usuario.get()
         contra = entrada_contra.get()
-        rol = verificar_login(usuario, contra)
-        if rol:
+        datos_usuario = verificar_login(usuario, contra)
+        if datos_usuario:
             ventana.destroy()
-            callback_por_rol(rol)
+            callback_por_rol(datos_usuario['rol'], datos_usuario['id_usuario'])
         else:
             messagebox.showerror("Error", "Correo o nombre de usuario y/o contraseña incorrectos.")
 
-    Button(ventana, text="Iniciar Sesión", command=login).pack(pady=15)
+    # Botón de login
+    boton_login = ctk.CTkButton(frame, text="Iniciar Sesión", command=login)
+    boton_login.pack(pady=20)
+
     ventana.mainloop()

@@ -1,71 +1,101 @@
-from tkinter import *
+import customtkinter as ctk
+from tkcalendar import DateEntry
 from tkinter import messagebox
 from db import conectar_db
 
 def abrir_registro():
-    ventana = Tk()
+    ctk.set_appearance_mode("light")  # o "dark"
+    ctk.set_default_color_theme("blue")
+
+    ventana = ctk.CTkToplevel()
     ventana.title("Registro de Paciente - VitalApp")
-    ventana.geometry("400x600")
+    ventana.geometry("500x700")
+    ventana.resizable(False, False)
 
-    # CAMPOS DEL FORMULARIO
-    Label(ventana, text="Nombre Completo:").pack(pady=5)
-    entrada_nombre = Entry(ventana)
-    entrada_nombre.pack()
+    scroll_frame = ctk.CTkScrollableFrame(ventana, width=480, height=680)
+    scroll_frame.pack(padx=10, pady=10, fill="both", expand=True)
 
-    Label(ventana, text="Correo:").pack(pady=5)
-    entrada_correo = Entry(ventana)
-    entrada_correo.pack()
+    ctk.CTkLabel(scroll_frame, text="Registro de Paciente", font=ctk.CTkFont(size=22, weight="bold")).pack(pady=15)
 
-    Label(ventana, text="Contraseña:").pack(pady=5)
-    entrada_contra = Entry(ventana, show="*")
-    entrada_contra.pack()
+    def crear_entrada(texto):
+        ctk.CTkLabel(scroll_frame, text=texto).pack(pady=(10, 0))
+        entrada = ctk.CTkEntry(scroll_frame, width=300)
+        entrada.pack()
+        return entrada
 
-    Label(ventana, text="Fecha de Nacimiento (YYYY-MM-DD):").pack(pady=5)
-    entrada_fecha = Entry(ventana)
-    entrada_fecha.pack()
+    entrada_nombre = crear_entrada("Nombre Completo:")
+    entrada_correo = crear_entrada("Correo:")
+    entrada_contra = crear_entrada("Contraseña:")
+    entrada_contra.configure(show="*")
 
-    Label(ventana, text="Genero:").pack(pady=5)
-    entrada_genero = Entry(ventana)
-    entrada_genero.pack()
+    ctk.CTkLabel(scroll_frame, text="Fecha de Nacimiento:").pack(pady=(10, 0))
+    entrada_fecha = DateEntry(scroll_frame, date_pattern="yyyy-mm-dd")
+    entrada_fecha.pack(pady=5)
 
-    Label(ventana, text="Telefono:").pack(pady=5)
-    entrada_telefono = Entry(ventana)
-    entrada_telefono.pack()
+    ctk.CTkLabel(scroll_frame, text="Género:").pack(pady=(10, 0))
+    genero_var = ctk.StringVar(value="Masculino")
+    genero_frame = ctk.CTkFrame(scroll_frame, fg_color="transparent")
+    genero_frame.pack()
+    ctk.CTkRadioButton(genero_frame, text="Masculino", variable=genero_var, value="Masculino").pack(side="left", padx=10)
+    ctk.CTkRadioButton(genero_frame, text="Femenino", variable=genero_var, value="Femenino").pack(side="left", padx=10)
 
-    Label(ventana, text="Direccion:").pack(pady=5)
-    entrada_direccion = Entry(ventana)
-    entrada_direccion.pack()
+    entrada_telefono = crear_entrada("Teléfono:")
+    entrada_direccion = crear_entrada("Dirección:")
+
+    ctk.CTkLabel(scroll_frame, text="--- Historial Médico ---", font=ctk.CTkFont(size=16, weight="bold")).pack(pady=15)
+
+    entrada_peso = crear_entrada("Peso (kg):")
+    entrada_altura = crear_entrada("Altura (cm):")
+    entrada_gruposanguineo = crear_entrada("Grupo Sanguíneo:")
+    entrada_enfermedades = crear_entrada("Enfermedades Crónicas:")
+    entrada_alergias = crear_entrada("Alergias:")
+    entrada_historialfamiliar = crear_entrada("Historial Familiar:")
+    entrada_habitos = crear_entrada("Hábitos (Tabaquismo, Alcohol, Dieta, Ejercicio):")
 
     def registrar():
         nombre = entrada_nombre.get()
         correo = entrada_correo.get()
         contrasena = entrada_contra.get()
         fecha = entrada_fecha.get()
-        genero = entrada_genero.get()
+        genero = genero_var.get()
         telefono = entrada_telefono.get()
         direccion = entrada_direccion.get()
+        peso = entrada_peso.get()
+        altura = entrada_altura.get()
+        grupo_sanguineo = entrada_gruposanguineo.get()
+        enfermedades = entrada_enfermedades.get()
+        alergias = entrada_alergias.get()
+        historialfamiliar = entrada_historialfamiliar.get()
+        habitos = entrada_habitos.get()
 
         if not (nombre and correo and contrasena and fecha and genero and telefono and direccion):
-            messagebox.showwarning("Campos Vacios", "Por favor completa todos los campos.")
+            messagebox.showwarning("Campos Vacíos", "Por favor completa todos los campos obligatorios.")
             return
 
         try:
             db = conectar_db()
             cursor = db.cursor()
 
-            # 1. Insertar en tabla Usuarios
             cursor.execute("""
                 INSERT INTO Usuarios (Nombre, Correo, Contraseña, idRol) 
                 VALUES (%s, %s, %s, %s)
             """, (nombre, correo, contrasena, 3))  # idRol = 3 (paciente)
+
             id_usuario = cursor.lastrowid
 
-            # 2. Insertar en tabla Pacientes
             cursor.execute("""
                 INSERT INTO Pacientes 
                 (idUsuario, Nombre_Paciente, Fecha_nacimiento, Genero, Telefono, Direccion, Correo)
                 VALUES (%s, %s, %s, %s, %s, %s, %s)
             """, (id_usuario, nombre, fecha, genero, telefono, direccion, correo))
+
+            id_paciente = cursor.lastrowid
+
+            cursor.execute("""
+                INSERT INTO HistorialMedico 
+                (idPaciente, Peso, Altura, GrupoSanguineo, EnfermedadesCronicas, Alergias, HistorialFamiliar, Habitos)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            """, (id_paciente, peso, altura, grupo_sanguineo, enfermedades, alergias, historialfamiliar, habitos))
 
             db.commit()
             db.close()
@@ -76,6 +106,6 @@ def abrir_registro():
         except Exception as e:
             messagebox.showerror("Error", f"Error al registrar paciente: {e}")
 
-    Button(ventana, text="Registrarse", command=registrar).pack(pady=20)
-    ventana.mainloop()
+    ctk.CTkButton(scroll_frame, text="Registrarse", command=registrar, width=300).pack(pady=30)
 
+    ventana.mainloop()
