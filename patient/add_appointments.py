@@ -1,4 +1,4 @@
-from tkinter import *
+import customtkinter as ctk
 from tkinter import messagebox
 from tkcalendar import DateEntry
 import datetime
@@ -28,36 +28,50 @@ def obtener_horarios(id_medico, fecha_cita):
     db.close()
     return horarios
 
-def agendar_cita(id_paciente):
-    ventana = Tk()
+def agendar_cita(id_paciente,ventana_anterior):
+    ctk.set_appearance_mode("Light")  # Opcional: "Light" o "Dark"
+    ctk.set_default_color_theme("green")  # Opcional: "green", "dark-blue", etc.
+
+    ventana = ctk.CTkToplevel()
     ventana.title("Agendar Cita - VitalApp")
-    ventana.geometry("400x600")
+    ventana.geometry("500x650")
+    ventana.resizable(False, False)
 
-    Label(ventana, text="Selecciona la Especialidad Médica:").pack(pady=5)
+    ventana_anterior.withdraw()  # Ocultar la ventana anterior
+
+    def regresar():
+        ventana.destroy()
+        ventana_anterior.deiconify()
+
+    frame = ctk.CTkFrame(ventana)
+    frame.pack(padx=20, pady=20, fill="both", expand=True)
+
+    boton_regresar = ctk.CTkButton(frame, text="Regresar", command=regresar)
+    boton_regresar.pack(pady=10)
+
+    ctk.CTkLabel(frame, text="Selecciona la Especialidad Médica:", font=ctk.CTkFont(size=16)).pack(pady=5)
     especialidades = obtener_especialidades()
-    especialidad_var = StringVar()
-    if especialidades:
-        especialidad_var.set(especialidades[0])
-    especialidad_menu = OptionMenu(ventana, especialidad_var, *especialidades)
-    especialidad_menu.pack()
+    especialidad_var = ctk.StringVar()
+    especialidad_menu = ctk.CTkOptionMenu(frame, variable=especialidad_var, values=especialidades if especialidades else [""])
+    especialidad_menu.pack(pady=5)
 
-    Label(ventana, text="Selecciona el Médico:").pack(pady=5)
-    medico_var = StringVar()
-    medico_menu = OptionMenu(ventana, medico_var, '')
-    medico_menu.pack()
+    ctk.CTkLabel(frame, text="Selecciona el Médico:", font=ctk.CTkFont(size=16)).pack(pady=5)
+    medico_var = ctk.StringVar()
+    medico_menu = ctk.CTkOptionMenu(frame, variable=medico_var, values=[""])
+    medico_menu.pack(pady=5)
 
-    Label(ventana, text="Fecha de la Cita:").pack(pady=5)
-    entrada_fecha_cita = DateEntry(ventana, date_pattern='yyyy-mm-dd')
-    entrada_fecha_cita.pack()
+    ctk.CTkLabel(frame, text="Fecha de la Cita:", font=ctk.CTkFont(size=16)).pack(pady=5)
+    entrada_fecha_cita = DateEntry(frame, date_pattern='yyyy-mm-dd')
+    entrada_fecha_cita.pack(pady=5)
 
-    Label(ventana, text="Selecciona el Horario:").pack(pady=5)
-    horario_var = StringVar()
-    horario_menu = OptionMenu(ventana, horario_var, '')
-    horario_menu.pack()
+    ctk.CTkLabel(frame, text="Selecciona el Horario:", font=ctk.CTkFont(size=16)).pack(pady=5)
+    horario_var = ctk.StringVar()
+    horario_menu = ctk.CTkOptionMenu(frame, variable=horario_var, values=[""])
+    horario_menu.pack(pady=5)
 
-    Label(ventana, text="Motivo de la Consulta:").pack(pady=5)
-    entrada_motivo = Entry(ventana)
-    entrada_motivo.pack()
+    ctk.CTkLabel(frame, text="Motivo de la Consulta:", font=ctk.CTkFont(size=16)).pack(pady=5)
+    entrada_motivo = ctk.CTkEntry(frame, width=300)
+    entrada_motivo.pack(pady=5)
 
     opciones_medico = {}
 
@@ -73,15 +87,14 @@ def agendar_cita(id_paciente):
         medicos = cursor.fetchall()
         db.close()
 
-        medico_menu['menu'].delete(0, 'end')
+        medico_menu.configure(values=[nombre for _, nombre in medicos])
         opciones_medico.clear()
 
         for id_medico, nombre in medicos:
-            medico_menu['menu'].add_command(label=nombre, command=lambda value=nombre: medico_var.set(value))
             opciones_medico[nombre] = id_medico
 
         if medicos:
-            medico_var.set(medicos[0][1])  # Nombre del primero
+            medico_var.set(medicos[0][1])  # Primer médico
         else:
             medico_var.set('')
 
@@ -95,16 +108,12 @@ def agendar_cita(id_paciente):
 
         horarios = obtener_horarios(id_medico, fecha_cita)
 
-        menu = horario_menu['menu']
-        menu.delete(0, 'end')
-
         if horarios:
-            for id_horario, hora in horarios:
-                hora_str = hora.strftime('%H:%M') if isinstance(hora, datetime.time) else str(hora)
-                menu.add_command(label=hora_str, command=lambda value=hora_str: horario_var.set(value))
-            primer_horario = horarios[0][1]
-            horario_var.set(primer_horario.strftime('%H:%M') if isinstance(primer_horario, datetime.time) else str(primer_horario))
+            horas_str = [hora.strftime('%H:%M') if isinstance(hora, datetime.time) else str(hora) for _, hora in horarios]
+            horario_menu.configure(values=horas_str)
+            horario_var.set(horas_str[0])
         else:
+            horario_menu.configure(values=[""])
             horario_var.set('')
 
     def agendar_cita_db():
@@ -114,7 +123,6 @@ def agendar_cita(id_paciente):
         horario = horario_var.get()
         motivo = entrada_motivo.get()
 
-        # Aquí, deberías insertar la cita en la base de datos
         id_medico = opciones_medico.get(medico)
         if not (id_medico and fecha_cita and horario and motivo):
             messagebox.showwarning("Campos Incompletos", "Por favor, completa todos los campos.")
@@ -122,22 +130,22 @@ def agendar_cita(id_paciente):
 
         db = conectar_db()
         cursor = db.cursor()
-
         cursor.execute("""
             INSERT INTO Citas (idPaciente, idMedico, Fecha_cita, idHorario, Motivo_consulta, Estado)
             VALUES (%s, %s, %s, (SELECT idHorario FROM Horario WHERE Hora = %s LIMIT 1), %s, 'Pendiente')
         """, (id_paciente, id_medico, fecha_cita, horario, motivo))
-        
         db.commit()
         db.close()
 
         messagebox.showinfo("Cita Agendada", "Tu cita ha sido agendada correctamente.")
+        ventana.destroy()
 
     # Asociar eventos
-    especialidad_var.trace("w", actualizar_medicos)
-    medico_var.trace("w", actualizar_horarios)
+    especialidad_var.trace_add("write", actualizar_medicos)
+    medico_var.trace_add("write", actualizar_horarios)
     entrada_fecha_cita.bind("<<DateEntrySelected>>", lambda event: actualizar_horarios())
 
-    Button(ventana, text="Agendar Cita", command=agendar_cita_db).pack(pady=20)
+    boton_agendar = ctk.CTkButton(frame, text="Agendar Cita", command=agendar_cita_db, width=200)
+    boton_agendar.pack(pady=20)
 
     ventana.mainloop()
