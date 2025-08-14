@@ -1,20 +1,90 @@
-from tkinter import *
-from admin.manage_users import gestionar_usuarios 
+import customtkinter as ctk
+from admin.manage_users import gestionar_usuarios
 from admin.manage_appointments import mostrar_citas
-#from admin.doctor_reports import mostrar_reportes
-#from admin.patient_history import mostrar_historial
+from admin.dating_statistics import mostrar_reporte_estadistico
+from admin.show_medical_history import vista_general_historiales
+from tkinter import messagebox
+from main import lanzar_vitalapp
 
-def abrir_admin():
-    ventana = Tk()
+def abrir_admin(id_usuario):
+    # Configuración general de apariencia
+    ctk.set_appearance_mode("Dark")  # Opciones: "System", "Dark", "Light"
+    ctk.set_default_color_theme("dark-blue")  # También: "green", "dark-blue", etc.
+
+    ventana = ctk.CTk()
     ventana.title("Panel Administrador")
-    ventana.geometry("400x400")
+    ventana.geometry("900x600")
+    ventana.resizable(False, False)
 
-    Label(ventana, text="Bienvenido, Administrador", font=("Arial", 16)).pack(pady=10)
+    # Frame principal
+    frame_principal = ctk.CTkFrame(master=ventana, corner_radius=15)
+    frame_principal.pack(pady=20, padx=60, fill="both", expand=True)
 
-    # Botón para abrir la ventana de gestión de usuarios
-    Button(ventana, text="Gestión de Usuarios", width=30, command=gestionar_usuarios).pack(pady=5)
-    Button(ventana, text="Ver Citas Disponibles", width=30, command=mostrar_citas).pack(pady=5)
-    # Button(ventana, text="Ver Reportes Médicos", width=30, command=mostrar_reportes).pack(pady=5)
-    # Button(ventana, text="Historial de Pacientes", width=30, command=mostrar_historial).pack(pady=5)
+    # Título
+    titulo = ctk.CTkLabel(frame_principal, text="Bienvenido, Administrador", font=("Helvetica", 24, "bold"))
+    titulo.pack(pady=20)
 
+    def volver_a_inicio():
+        ventana.destroy()
+        lanzar_vitalapp()
+
+     # Funciones para cerrar ventana antes de abrir otra
+    def abrir_gestion_usuarios():
+        gestionar_usuarios(ventana)  # ✅ Pasa la ventana actual como argumento
+        ventana.withdraw()  # ✅ Oculta en lugar de destruir
+
+
+    def abrir_mostrar_citas():
+        ventana.withdraw()  # Oculta la ventana actual
+        mostrar_citas(ventana)
+
+    def abrir_reporte_estadistico():
+        ventana.withdraw()
+        mostrar_reporte_estadistico(ventana)
+
+    def abrir_historiales():
+        ventana.withdraw()
+        vista_general_historiales(ventana)
+
+    # Botones principales
+    ctk.CTkButton(
+        frame_principal, 
+        text="Gestión de Usuarios", 
+        width=250, 
+        height=40, 
+        command=abrir_gestion_usuarios
+    ).pack(pady=10)
+
+    ctk.CTkButton(
+        frame_principal, 
+        text="Ver Citas Disponibles", 
+        width=250, 
+        height=40, 
+        command=abrir_mostrar_citas
+    ).pack(pady=10)
+
+    ctk.CTkButton(
+        frame_principal, 
+        text="Ver Reportes de los Médicos", 
+        width=250, 
+        height=40, 
+        command=abrir_reporte_estadistico
+    ).pack(pady=10)
+
+    ctk.CTkButton(
+        frame_principal, 
+        text="Historial de Pacientes", 
+        width=250, 
+        height=40, 
+        command=abrir_historiales
+    ).pack(pady=10)
+
+    ctk.CTkButton(
+        frame_principal, 
+        text="Cerrar Sesión / Volver al Inicio", 
+        width=150, 
+        height=65, 
+        command=volver_a_inicio
+    ).pack(pady=20)
+    
     ventana.mainloop()
