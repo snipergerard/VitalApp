@@ -1,4 +1,5 @@
 import customtkinter as ctk
+import hashlib
 from tkinter import messagebox
 from db import conectar_db
 
@@ -9,11 +10,16 @@ def verificar_login(usuario, contrasena):
         messagebox.showerror("Error", "No se pudo conectar a la base de datos.")
         return None
     try:
+        # Convertimos la contraseña ingresada a SHA-256
+        input_hash = hashlib.sha256(contrasena.encode()).hexdigest()
+        
         cursor = db.cursor()
+        # IMPORTANTE: Ahora comparamos u.Contraseña contra input_hash
         cursor.execute("""
             SELECT u.idUsuario, u.idRol FROM Usuarios u
             WHERE (u.Correo=%s OR u.Nombre=%s) AND u.Contraseña=%s
-        """, (usuario, usuario, contrasena))
+        """, (usuario, usuario, input_hash))
+        
         resultado = cursor.fetchone()
         if resultado:
             id_usuario, id_rol = resultado
@@ -61,7 +67,8 @@ def abrir_login(callback_por_rol):
             ventana.destroy()
             callback_por_rol(datos_usuario['rol'], datos_usuario['id_usuario'])
         else:
-            messagebox.showerror("Error", "Correo o nombre de usuario y/o contraseña incorrectos.")
+            # Mensaje más profesional para seguridad
+            messagebox.showerror("Error", "Credenciales incorrectas.")
 
     # Botón de login
     boton_login = ctk.CTkButton(frame, text="Iniciar Sesión", command=login)
