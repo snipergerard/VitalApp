@@ -1,10 +1,11 @@
 import customtkinter as ctk
+import hashlib
 from tkcalendar import DateEntry
 from tkinter import messagebox
-from db import conectar_db
+from db import conectar_db, calcular_hash_usuario
 
 def abrir_registro():
-    ctk.set_appearance_mode("light")  # o "dark"
+    ctk.set_appearance_mode("light") 
     ctk.set_default_color_theme("blue")
 
     ventana = ctk.CTkToplevel()
@@ -76,13 +77,32 @@ def abrir_registro():
             db = conectar_db()
             cursor = db.cursor()
 
+            # 1. SEGURIDAD: Hashear la contraseña del usuario (Confidencialidad)
+            contrasena_hasheada = hashlib.sha256(contrasena.encode()).hexdigest()
+
+            # --- LÓGICA DE CRIPTOGRAFÍA (BLOCKCHAIN - Integridad) ---
+            
+            # 2. Obtener el hash del último registro para encadenarlo (prev_hash)
+            cursor.execute("SELECT hash_actual FROM Usuarios ORDER BY idUsuario DESC LIMIT 1")
+            resultado_ultimo = cursor.fetchone()
+            prev_hash = resultado_ultimo[0] if resultado_ultimo else "0"
+
+            # 3. Inserción inicial del usuario con la contraseña ya hasheada
             cursor.execute("""
-                INSERT INTO Usuarios (Nombre, Correo, Contraseña, idRol) 
-                VALUES (%s, %s, %s, %s)
-            """, (nombre, correo, contrasena, 3))  # idRol = 3 (paciente)
+                INSERT INTO Usuarios (Nombre, Correo, Contraseña, idRol, prev_hash, hash_actual) 
+                VALUES (%s, %s, %s, %s, %s, %s)
+            """, (nombre, correo, contrasena_hasheada, 3, prev_hash, '0'))
 
             id_usuario = cursor.lastrowid
 
+            # 4. Calcular el hash de integridad del bloque y actualizar
+            # Esto protege que nadie cambie el Nombre, Correo o Rol en la DB
+            hash_actual = calcular_hash_usuario(id_usuario, nombre, correo, 3, prev_hash)
+            
+            cursor.execute("UPDATE Usuarios SET hash_actual = %s WHERE idUsuario = %s", 
+                           (hash_actual, id_usuario))
+
+            # --- INSERCIONES EN OTRAS TABLAS ---
             cursor.execute("""
                 INSERT INTO Pacientes 
                 (idUsuario, Nombre_Paciente, Fecha_nacimiento, Genero, Telefono, Direccion, Correo)
@@ -100,7 +120,7 @@ def abrir_registro():
             db.commit()
             db.close()
 
-            messagebox.showinfo("Éxito", "Paciente registrado correctamente.")
+            messagebox.showinfo("Éxito", f"Paciente registrado correctamente.\n\nContraseña protegida y Hash de bloque generado: {hash_actual[:15]}...")
             ventana.destroy()
 
         except Exception as e:
